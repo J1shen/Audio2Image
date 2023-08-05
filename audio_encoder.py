@@ -15,7 +15,7 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 model = imagebind_model.imagebind_huge(pretrained=True)
 model.eval()
 model.to(device)
-class audio_encoder():
+class Audio_encoder():
     def init_video_Qformer(num_query_token, vision_width,num_hidden_layers =2):
         encoder_config = BertConfig.from_pretrained("bert-base-uncased")
         encoder_config.num_hidden_layers = num_hidden_layers
