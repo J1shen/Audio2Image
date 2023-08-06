@@ -90,6 +90,7 @@ class Audio_encoder(nn.Module):
                 for name, param in self.audio_position_embedding.named_parameters():
                     param.requires_grad = True
                 print('Audio_Qformer is not frozen')
+                
     def forward(self, audio, modality_type=ModalityType.AUDIO):
         device = audio.device
         with self.maybe_autocast():
