@@ -10,6 +10,6 @@ accelerate launch --mixed_precision="fp16"  train_lora.py \
   --max_grad_norm=1 \
   --lr_scheduler="cosine" --lr_warmup_steps=0 \
   --output_dir=./lora_output \
-  --report_to=wandb \
+  --report_to=tensorboard \
   --checkpointing_steps=3000 \
   --validation_prompt=None
