@@ -18,7 +18,7 @@ from pytorchvideo.data.encoded_video import EncodedVideo
 from torchvision import transforms
 from torchvision.transforms._transforms_video import NormalizeVideo
 
-from imagebind.models.multimodal_preprocessors import SimpleTokenizer
+from .models.multimodal_preprocessors import SimpleTokenizer
 
 DEFAULT_AUDIO_FRAME_SHIFT_MS = 10  # in milliseconds
 
@@ -79,7 +79,7 @@ def load_and_transform_vision_data(image_paths, device):
     if image_paths is None:
         return None
 
-    image_outputs = []
+    image_ouputs = []
     for image_path in image_paths:
         data_transform = transforms.Compose(
             [
@@ -98,8 +98,8 @@ def load_and_transform_vision_data(image_paths, device):
             image = Image.open(fopen).convert("RGB")
 
         image = data_transform(image).to(device)
-        image_outputs.append(image)
-    return torch.stack(image_outputs, dim=0)
+        image_ouputs.append(image)
+    return torch.stack(image_ouputs, dim=0)
 
 
 def load_and_transform_text(text, device):

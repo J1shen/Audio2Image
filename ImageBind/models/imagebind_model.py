@@ -13,16 +13,16 @@ from types import SimpleNamespace
 import torch
 import torch.nn as nn
 
-from imagebind.models.helpers import (EinOpsRearrange, LearnableLogitScaling, Normalize,
+from .helpers import (EinOpsRearrange, LearnableLogitScaling, Normalize,
                             SelectElement, SelectEOSAndProject)
-from imagebind.models.multimodal_preprocessors import (AudioPreprocessor,
+from .multimodal_preprocessors import (AudioPreprocessor,
                                              IMUPreprocessor, PadIm2Video,
                                              PatchEmbedGeneric,
                                              RGBDTPreprocessor,
                                              SpatioTemporalPosEmbeddingHelper,
                                              TextPreprocessor,
                                              ThermalPreprocessor)
-from imagebind.models.transformer import MultiheadAttention, SimpleTransformer
+from .transformer import MultiheadAttention, SimpleTransformer
 
 ModalityType = SimpleNamespace(
     VISION="vision",
@@ -472,8 +472,43 @@ class ImageBindModel(nn.Module):
                     modality_value = modality_value.mean(dim=1)
 
                 outputs[modality_key] = modality_value
-
+                #  modality_heads normalize 后768->linear 1024 ->
         return outputs
+    def get_audio_feature(self, inputs, modality_type):
+        modality_value = inputs
+        modality_key = modality_type
+        reduce_list = (
+            modality_value.ndim >= 5
+        )  # Audio and Video inputs consist of multiple clips
+        if reduce_list:
+            B, S = modality_value.shape[:2]
+            modality_value = modality_value.reshape(
+                B * S, *modality_value.shape[2:]
+            )
+
+        if modality_value is not None:
+            modality_value = self.modality_preprocessors[modality_key](
+                **{modality_key: modality_value}
+            )
+            trunk_inputs = modality_value["trunk"]
+            head_inputs = modality_value["head"]
+            modality_value = self.modality_trunks[modality_key](**trunk_inputs)
+
+            audio_feature = self.modality_heads[modality_key][:-1](
+                modality_value, **head_inputs
+            )
+            modality_value = self.modality_heads[modality_key][-1:](
+                audio_feature, **head_inputs
+            )
+            modality_value = self.modality_postprocessors[modality_key](
+                modality_value
+            )
+
+            if reduce_list:
+                audio_feature = audio_feature.reshape(B, S, -1)
+                modality_value = modality_value.reshape(B, S, -1)
+                #  modality_heads
+        return audio_feature, modality_value
 
 
 def imagebind_huge(pretrained=False):
@@ -503,4 +538,4 @@ def imagebind_huge(pretrained=False):
 
         model.load_state_dict(torch.load(".checkpoints/imagebind_huge.pth"))
 
-    return model
+    return model,1024
