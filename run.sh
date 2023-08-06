@@ -16,5 +16,4 @@ accelerate launch --mixed_precision="fp16"  --multi_gpu train.py \
   --push_to_hub \
   --hub_token=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 \
   --enable_xformers_memory_efficient_attention \
-  --validation_prompt=None \
   --checkpointing_steps=3000 

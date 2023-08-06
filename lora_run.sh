@@ -11,5 +11,4 @@ accelerate launch --mixed_precision="fp16"  train_lora.py \
   --lr_scheduler="cosine" --lr_warmup_steps=0 \
   --output_dir=./lora_output \
   --report_to=tensorboard \
-  --checkpointing_steps=3000 \
-  --validation_prompt=None
+  --checkpointing_steps=3000 
