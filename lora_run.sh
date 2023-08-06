@@ -12,4 +12,4 @@ accelerate launch --mixed_precision="fp16"  train_lora.py \
   --output_dir=./lora_output \
   --report_to=wandb \
   --checkpointing_steps=3000 \
-  --validation_prompts=None
+  --validation_prompt=None
