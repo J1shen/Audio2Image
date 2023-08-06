@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import random
+from PIL import Image
 import shutil
 from pathlib import Path
 
@@ -46,6 +47,8 @@ from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 
+from audio_encoder import Audio_encoder
+from ImageBind.data import load_and_transform_audio_data
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.20.0.dev0")
@@ -425,6 +428,8 @@ def main():
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision
     )
+    audio_encoder = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
+                            num_audio_query_token=1)
     # freeze parameters of models to save more memory
     unet.requires_grad_(False)
     vae.requires_grad_(False)
@@ -442,7 +447,8 @@ def main():
     # Move unet, vae and text_encoder to device and cast to weight_dtype
     unet.to(accelerator.device, dtype=weight_dtype)
     vae.to(accelerator.device, dtype=weight_dtype)
-    text_encoder.to(accelerator.device, dtype=weight_dtype)
+    #text_encoder.to(accelerator.device, dtype=weight_dtype)
+    audio_encoder.to(accelerator.device, dtype=weight_dtype)
 
     # now we will add new LoRA weights to the attention layers
     # It's important to realize here how many attention weights will be added and of which sizes
@@ -549,71 +555,15 @@ def main():
     )
 
     # Get the datasets: you can either provide your own training and evaluation files (see below)
-    # or specify a Dataset from the hub (the dataset will be downloaded automatically from the datasets Hub).
-
-    # In distributed training, the load_dataset function guarantees that only one local process can concurrently
-    # download the dataset.
-    if args.dataset_name is not None:
-        # Downloading and loading a dataset from the hub.
-        dataset = load_dataset(
-            args.dataset_name,
-            args.dataset_config_name,
-            cache_dir=args.cache_dir,
-        )
-    else:
-        data_files = {}
-        if args.train_data_dir is not None:
-            data_files["train"] = os.path.join(args.train_data_dir, "**")
-        dataset = load_dataset(
-            "imagefolder",
-            data_files=data_files,
-            cache_dir=args.cache_dir,
-        )
-        # See more about loading custom images at
-        # https://huggingface.co/docs/datasets/v2.4.0/en/image_load#imagefolder
-
-    # Preprocessing the datasets.
-    # We need to tokenize inputs and targets.
-    column_names = dataset["train"].column_names
-
-    # 6. Get the column names for input/target.
-    dataset_columns = DATASET_NAME_MAPPING.get(args.dataset_name, None)
-    if args.image_column is None:
-        image_column = dataset_columns[0] if dataset_columns is not None else column_names[0]
-    else:
-        image_column = args.image_column
-        if image_column not in column_names:
-            raise ValueError(
-                f"--image_column' value '{args.image_column}' needs to be one of: {', '.join(column_names)}"
-            )
-    if args.caption_column is None:
-        caption_column = dataset_columns[1] if dataset_columns is not None else column_names[1]
-    else:
-        caption_column = args.caption_column
-        if caption_column not in column_names:
-            raise ValueError(
-                f"--caption_column' value '{args.caption_column}' needs to be one of: {', '.join(column_names)}"
-            )
-
-    # Preprocessing the datasets.
-    # We need to tokenize input captions and transform the images.
-    def tokenize_captions(examples, is_train=True):
-        captions = []
-        for caption in examples[caption_column]:
-            if isinstance(caption, str):
-                captions.append(caption)
-            elif isinstance(caption, (list, np.ndarray)):
-                # take a random caption if there are multiple
-                captions.append(random.choice(caption) if is_train else caption[0])
-            else:
-                raise ValueError(
-                    f"Caption column `{caption_column}` should contain either strings or lists of strings."
-                )
-        inputs = tokenizer(
-            captions, max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
-        )
-        return inputs.input_ids
-
+    dataset = load_dataset('csv',data_files='Test.csv')
+    def read_img(img_path):
+        img = Image.open(img_path)
+        return img
+    
+    def read_audio(audio_path):
+        audio = load_and_transform_audio_data([audio_path], "cpu", clips_per_video=1)
+        audio = audio.squeeze(0)
+        return audio
     # Preprocessing the datasets.
     train_transforms = transforms.Compose(
         [
@@ -626,16 +576,16 @@ def main():
     )
 
     def preprocess_train(examples):
-        images = [image.convert("RGB") for image in examples[image_column]]
-        examples["pixel_values"] = [train_transforms(image) for image in images]
-        examples["input_ids"] = tokenize_captions(examples)
+        examples["pixel_values"] = train_transforms(read_img(examples['image']))
+        examples["input_ids"] = read_audio(examples['audio'])
         return examples
 
     with accelerator.main_process_first():
         if args.max_train_samples is not None:
             dataset["train"] = dataset["train"].shuffle(seed=args.seed).select(range(args.max_train_samples))
         # Set the training transforms
-        train_dataset = dataset["train"].with_transform(preprocess_train)
+        train_dataset = dataset["train"].map(preprocess_train)
+        train_dataset.set_format(type='torch')
 
     def collate_fn(examples):
         pixel_values = torch.stack([example["pixel_values"] for example in examples])
@@ -758,8 +708,8 @@ def main():
                 noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
                 # Get the text embedding for conditioning
-                encoder_hidden_states = text_encoder(batch["input_ids"])[0]
-
+                #encoder_hidden_states = text_encoder(batch["input_ids"])[0]
+                audio_hidden_states = audio_encoder(batch["input_ids"])
                 # Get the target for loss depending on the prediction type
                 if args.prediction_type is not None:
                     # set prediction_type of scheduler if defined
@@ -773,7 +723,7 @@ def main():
                     raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
 
                 # Predict the noise residual and compute loss
-                model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+                model_pred = unet(noisy_latents, timesteps, audio_hidden_states).sample
 
                 if args.snr_gamma is None:
                     loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
