@@ -786,6 +786,8 @@ def main():
 
                         save_path = os.path.join(args.output_dir, f"checkpoint-{global_step}")
                         accelerator.save_state(save_path)
+                        
+                        torch.save(audio_encoder.state_dict(),'./encoder_ckpt')
                         logger.info(f"Saved state to {save_path}")
 
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
@@ -843,6 +845,8 @@ def main():
         unet = unet.to(torch.float32)
         unet.save_attn_procs(args.output_dir)
 
+        torch.save(audio_encoder.state_dict(),args.output_dir)
+
         if args.push_to_hub:
             save_model_card(
                 repo_id,
@@ -859,38 +863,39 @@ def main():
             )
 
     # Final inference
-    # Load previous pipeline
-    pipeline = DiffusionPipeline.from_pretrained(
-        args.pretrained_model_name_or_path, revision=args.revision, torch_dtype=weight_dtype
-    )
-    pipeline = pipeline.to(accelerator.device)
+    if args.validation_prompt is not None:
+        # Load previous pipeline
+        pipeline = DiffusionPipeline.from_pretrained(
+            args.pretrained_model_name_or_path, revision=args.revision, torch_dtype=weight_dtype
+        )
+        pipeline = pipeline.to(accelerator.device)
 
-    # load attention processors
-    pipeline.unet.load_attn_procs(args.output_dir)
+        # load attention processors
+        pipeline.unet.load_attn_procs(args.output_dir)
 
-    # run inference
-    generator = torch.Generator(device=accelerator.device)
-    if args.seed is not None:
-        generator = generator.manual_seed(args.seed)
-    images = []
-    for _ in range(args.num_validation_images):
-        images.append(pipeline(args.validation_prompt, num_inference_steps=30, generator=generator).images[0])
+        # run inference
+        generator = torch.Generator(device=accelerator.device)
+        if args.seed is not None:
+            generator = generator.manual_seed(args.seed)
+        images = []
+        for _ in range(args.num_validation_images):
+            images.append(pipeline(args.validation_prompt, num_inference_steps=30, generator=generator).images[0])
 
-    if accelerator.is_main_process:
-        for tracker in accelerator.trackers:
-            if len(images) != 0:
-                if tracker.name == "tensorboard":
-                    np_images = np.stack([np.asarray(img) for img in images])
-                    tracker.writer.add_images("test", np_images, epoch, dataformats="NHWC")
-                if tracker.name == "wandb":
-                    tracker.log(
-                        {
-                            "test": [
-                                wandb.Image(image, caption=f"{i}: {args.validation_prompt}")
-                                for i, image in enumerate(images)
-                            ]
-                        }
-                    )
+        if accelerator.is_main_process:
+            for tracker in accelerator.trackers:
+                if len(images) != 0:
+                    if tracker.name == "tensorboard":
+                        np_images = np.stack([np.asarray(img) for img in images])
+                        tracker.writer.add_images("test", np_images, epoch, dataformats="NHWC")
+                    if tracker.name == "wandb":
+                        tracker.log(
+                            {
+                                "test": [
+                                    wandb.Image(image, caption=f"{i}: {args.validation_prompt}")
+                                    for i, image in enumerate(images)
+                                ]
+                            }
+                        )
 
     accelerator.end_training()
 
