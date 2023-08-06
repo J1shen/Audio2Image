@@ -13,7 +13,6 @@ audio_paths=["ImageBind/.assets/dog_audio.wav", "ImageBind/.assets/car_audio.wav
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-# Instantiate model
 class Audio_encoder(nn.Module):
     def maybe_autocast(self, dtype=torch.float16):
         # if on cpu, don't use autocast
