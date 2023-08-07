@@ -25,7 +25,7 @@ class Audio_encoder(nn.Module):
             return contextlib.nullcontext()
     def init_video_Qformer(self, num_query_token, vision_width, num_hidden_layers=2):
         encoder_config = BertConfig.from_pretrained("bert-base-uncased")
-        encoder_config.is_decoder = True
+        #encoder_config.is_decoder = True
         encoder_config.num_hidden_layers = num_hidden_layers
         encoder_config.encoder_width = vision_width
         # insert cross-attention layer every other block
@@ -115,14 +115,27 @@ class Audio_encoder(nn.Module):
                 )
             audio_hidden = audio_query_output.last_hidden_state
 
-            inputs_llama = self.audio_proj(audio_hidden)
-            atts_llama = torch.ones(inputs_llama.size()[:-1], dtype=torch.long).to(device)
+            inputs = self.audio_proj(audio_hidden)
+            atts_llama = torch.ones(inputs.size()[:-1], dtype=torch.long).to(device)
+
+        return inputs
     
-        return inputs_llama
+    def ibout(self, audio, modality_type=ModalityType.AUDIO):
+        device = audio.device
+        with self.maybe_autocast():
+            output = self.audio_encoder.forward({ModalityType.AUDIO: audio})
+        return output[ModalityType.AUDIO]
+
+
+    
+def read_audio(audio_path):
+        audio = load_and_transform_audio_data([audio_path], "cpu", clips_per_video=1)
+        audio = audio.squeeze(0)
+        return audio
 
 if __name__ == '__main__':
     encoder = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
-                            num_audio_query_token=1)
+                            num_audio_query_token=77)
     encoder.to(device)
     audio = load_and_transform_audio_data([audio_paths[0]],"cpu", clips_per_video=1)
     audio = audio.to(device)

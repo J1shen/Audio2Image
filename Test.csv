@@ -1,4 +1,4 @@
-audio,image
-ImageBind/.assets/car_audio.wav,ImageBind/.assets/car_image.jpg
-ImageBind/.assets/bird_audio.wav,ImageBind/.assets/bird_image.jpg
-ImageBind/.assets/dog_audio.wav,ImageBind/.assets/dog_image.jpg
+audio,image,caption
+ImageBind/.assets/car_audio.wav,ImageBind/.assets/car_image.jpg,'an orange car'
+ImageBind/.assets/bird_audio.wav,ImageBind/.assets/bird_image.jpg,'a bird'
+ImageBind/.assets/dog_audio.wav,ImageBind/.assets/dog_image.jpg,'a cute dog smiling'

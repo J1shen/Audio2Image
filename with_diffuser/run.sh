@@ -14,6 +14,6 @@ accelerate launch --mixed_precision="fp16"  --multi_gpu train.py \
   --output_dir="sd-model" \
   --report_to=tensorboard \
   --push_to_hub \
-  --hub_token=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 \
+  --hub_token= \
   --enable_xformers_memory_efficient_attention \
   --checkpointing_steps=3000 
