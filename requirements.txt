@@ -7,3 +7,4 @@ ftfy
 iopath
 timm
 pytorchvideo
+kornia
