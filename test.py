@@ -42,7 +42,7 @@ text_encoder = text_encoder.to(torch_device)
 unet = unet.to(torch_device)
 audio_encoder = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
                             num_audio_query_token=77).to(torch_device).eval()
-
+audio_encoder.load_state_dict(torch.load('audio_weights.pth'))
 # Some settings
 prompt = ["A watercolor painting of an otter"]
 height = 512                        # default height of Stable Diffusion
@@ -56,10 +56,10 @@ batch_size = 1
 text_input = tokenizer(prompt, padding="max_length", max_length=tokenizer.model_max_length, truncation=True, return_tensors="pt")
 with torch.no_grad():
     text_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0]
-    print(text_embeddings.shape)
+    #print(text_embeddings.shape)
     audio = read_audio('ImageBind/.assets/bird_audio.wav').to(torch_device).half()
-    #text_embeddings = audio_encoder(audio)
-    print(text_embeddings.shape)
+    text_embeddings = audio_encoder(audio)
+    #print(text_embeddings.shape)
 max_length = text_input.input_ids.shape[-1]
 uncond_input = tokenizer(
     [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
@@ -67,9 +67,6 @@ uncond_input = tokenizer(
 with torch.no_grad():
     uncond_embeddings = text_encoder(uncond_input.input_ids.to(torch_device))[0]
 text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
-print(text_embeddings.shape)
-text_embeddings = audio_encoder.ibout(audio)
-print(text_embeddings.shape)
 
 
 

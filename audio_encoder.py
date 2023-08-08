@@ -43,6 +43,7 @@ class Audio_encoder(nn.Module):
                  imagebind_ckpt_path,
                  num_audio_query_token = 8,
                  proj_size = 768,
+                 num_hidden_layers=3,
                  frozen_audio_Qformer = False) -> None:
             super().__init__()
             self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -59,7 +60,7 @@ class Audio_encoder(nn.Module):
             self.audio_Qformer,self.audio_query_tokens = self.init_video_Qformer(
                 num_query_token = self.num_audio_query_token,
                 vision_width=self.audio_hidden_size,
-                num_hidden_layers=2)
+                num_hidden_layers=num_hidden_layers)
             self.audio_Qformer.cls = None
             self.audio_Qformer.bert.embeddings.word_embeddings = None
             self.audio_Qformer.bert.embeddings.position_embeddings = None

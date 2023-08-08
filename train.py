@@ -43,6 +43,8 @@ model = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 loss = torch.nn.functional.kl_div
+torch.nn.KLDivLoss()
+#loss = torch.nn.MSELoss()
 
 def train(model,
           train_loader,
@@ -60,7 +62,7 @@ def train(model,
             caption = caption.to(device)
             
             outputs = model(audio)
-            loss = criterion(outputs, caption)
+            loss = criterion(outputs.softmax(-1).log(), caption.softmax(-1), reduction='sum')
 
             optimizer.zero_grad()
             loss.backward()
@@ -75,6 +77,7 @@ def train(model,
     return model
 
 if __name__ == '__main__':
+    #model.load_state_dict(torch.load('audio_weights.pth'))
     model = train(model,train_loader,loss,optimizer,num_epochs)
     torch.save(model.state_dict(), 'audio_weights.pth')
-    #model.load_state_dict(torch.load('model_weights.pth'))
+    #model.load_state_dict(torch.load('audio_weights.pth'))
