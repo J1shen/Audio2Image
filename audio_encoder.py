@@ -43,7 +43,7 @@ class Audio_encoder(nn.Module):
                  imagebind_ckpt_path,
                  num_audio_query_token = 8,
                  proj_size = 768,
-                 num_hidden_layers=3,
+                 num_hidden_layers=4,
                  frozen_audio_Qformer = False) -> None:
             super().__init__()
             self.device = "cuda:0" if torch.cuda.is_available() else "cpu"

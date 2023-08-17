@@ -42,9 +42,9 @@ model = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
                             num_audio_query_token=77)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
-loss = torch.nn.functional.kl_div
-torch.nn.KLDivLoss()
-#loss = torch.nn.MSELoss()
+#loss = torch.nn.functional.kl_div
+
+loss = torch.nn.MSELoss()
 
 def train(model,
           train_loader,
