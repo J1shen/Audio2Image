@@ -62,8 +62,8 @@ def train(model,
             caption = caption.to(device)
             
             outputs = model(audio)
-            loss = criterion(outputs.softmax(-1).log(), caption.softmax(-1), reduction='sum')
-
+            #loss = criterion(outputs.softmax(-1).log(), caption.softmax(-1), reduction='sum')
+            loss = criterion(outputs,caption)    
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

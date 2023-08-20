@@ -57,7 +57,8 @@ text_input = tokenizer(prompt, padding="max_length", max_length=tokenizer.model_
 with torch.no_grad():
     text_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0]
     #print(text_embeddings.shape)
-    audio = read_audio('ImageBind/.assets/bird_audio.wav').to(torch_device).half()
+    audio = read_audio('dogs-barking.wav').to(torch_device).half()
+    # audio = read_audio('ImageBind/.assets/dog_audio.wav').to(torch_device).half()
     text_embeddings = audio_encoder(audio)
     #print(text_embeddings.shape)
 max_length = text_input.input_ids.shape[-1]
