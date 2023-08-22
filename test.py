@@ -39,6 +39,7 @@ scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedu
 # To the GPU we go!
 vae = vae.to(torch_device)
 unet = unet.to(torch_device)
+text_encoder = text_encoder.to(torch_device)
 
 # Some settings
 prompt = ["A watercolor painting of an otter"]
@@ -56,6 +57,8 @@ def set_timesteps(scheduler, num_inference_steps):
     
 def test_one_pic(audio_encoder,epoch):
     audio_encoder.eval()
+    text_input = tokenizer(prompt, padding="max_length", max_length=tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
     with torch.no_grad():
         audio = read_audio('dogs-barking.wav').to(torch_device).half()
         text_embeddings = audio_encoder(audio)
@@ -108,7 +111,6 @@ def test_one_pic(audio_encoder,epoch):
     pil_images[0].save(f'./imgs/img_{epoch}.jpg')
 
 if __name__ == "__main__":
-    text_encoder = text_encoder.to(torch_device)
     audio_encoder = Audio_encoder(imagebind_ckpt_path='.checkpoints/imagebind_huge.pth',
                             num_audio_query_token=77).to(torch_device).eval()
     audio_encoder.load_state_dict(torch.load('audio_weights.pth'))

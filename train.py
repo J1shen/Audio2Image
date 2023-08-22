@@ -32,8 +32,8 @@ class MyDataset(Dataset):
         try:
             audio = read_audio(audio_path)
         except:
-            audio = torch.zeros_like(text_embeddings)
-            text_embeddings = audio
+            audio = torch.zeros_like(read_audio('dogs-barking.wav'))
+            text_embeddings = torch.zeros_like(text_embeddings)
         return audio,text_embeddings
 
     def __len__(self):
@@ -43,6 +43,8 @@ class MyDataset(Dataset):
 train_dataset = MyDataset('./audiocaps/new_train.csv')  
 BATCH_SIZE = 16
 train_loader = DataLoader(train_dataset,batch_size=BATCH_SIZE)
+val_dataset = MyDataset('./audiocaps/new_val.csv')  
+val_loader = DataLoader(val_dataset,batch_size=BATCH_SIZE)
 
 # 定义超参数
 lr = 1e-4
@@ -94,7 +96,7 @@ def train(model,
 
             val_loss = sum(losses)/len(losses)
             with summary_writer.as_default():
-                    tf.summary.scalar('valid_loss', val_loss, epoch=epoch)
+                    tf.summary.scalar('valid_loss', val_loss, step=epoch)
 
         test_one_pic(model,epoch)
 
@@ -105,7 +107,7 @@ def train(model,
 if __name__ == '__main__':
     #model.load_state_dict(torch.load('audio_weights.pth'))
     summary_writer = tf.summary.create_file_writer(logdir='logs/')
-    model = train(model,train_loader,loss,optimizer)
+    model = train(model,train_loader,loss,optimizer,valid_loader=val_loader)
     summary_writer.close()
     torch.save(model.state_dict(), 'audio_weights_ac.pth')
     #model.load_state_dict(torch.load('audio_weights.pth'))
